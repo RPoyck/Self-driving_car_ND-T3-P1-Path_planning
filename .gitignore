@@ -1,0 +1,22 @@
+# Ignore generated docs
+*.dox
+*.wikidoc
+
+# eclipse stuff
+.project
+.cproject
+
+# qcreator stuff
+qtcreator-*
+*.user
+
+*~
+
+# Emacs
+.#*
+
+# KDevelop IDE stuff
+*.kdev4
+*.kate-swp
+
+*build/*
