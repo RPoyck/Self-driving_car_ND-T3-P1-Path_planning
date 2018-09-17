@@ -1,5 +1,45 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
+Execution by: Rob Poyck
+
+
+# Model documentation
+## Current model setup
+The code is commented throughout and therefore forms a complete documentation of the flow on its own, in order to create an overview all the main steps are summarised here:
+ - The algorithm bases on the following input
+     - Sensor fusion data of all the cars on the same side of the road as the ego vehicle
+     - The position of the ego vehicle on the road
+     - The waypoints of the last iteration which have not been reached yet.
+ - To define the trajectory for the coming second or more from the current time-step
+     - All the detected vehicles on the ego vehicle's side of the road are checked:
+         - If there is a vehicle directly in front of the ego vehicle 
+             - Calculate the cost impact on staying on this lane based on 
+                 - The distance to the vehicle 
+                 - The vehicle's speed
+             - If this vehicle is closer by than the safety distance of 25 [m]
+                 - A flag is set to indicate that the ego velocity has to be reduced
+                 - A flag is set to indicate that the 
+         - For both the lanes to the left and to the right of the current lane if there is a lane on that side
+             - If there is a vehicle within !!
+             - Otherwise if there is a vehicle further forward than the safety distance of 25 [m] calculate the cost impact of switching to this lane based on
+                 - The distance to the vehicle 
+                 - The vehicle's speed
+                 - The fact that the vehicle has to switch lanes, which is less optimal than continuing on a straight path
+                 
+
+     
+## Possible improvement
+Some improvements to make the algorithm better and/or more efficient:
+ - Code refactoring 
+     - There is some repetition in the code which could be packed in functions/methods to make the code somewhat more efficient and a lot more clean and transparent
+     - All the tuning parameters can be defined in a single place and read from a parameter file in stead of half hard-coded. This will make tuning easier and will mean that it is not necessary to build the code after every little change in parameters.
+ - Foresight
+     - Some efficiency can be gained by using all the available information, to for example shift lanes even before getting to close to other vehicles
+     - Currently only the lanes directly next to the current lane are taken in the cost calculation, it is better to take all 3 lanes constantly, for it might be more efficient to change two lanes directly after one another.
+ - Collision detection
+     - Sometimes the distance without accident is broken by an other car read- or side-ending the ego vehicle in a bad lane-change manoeuvre. This could be avoided sometimes by detecting the intention, i.e. sidewards velocity, and speeding up/slowing down/changing lanes when possible.
+
+# Default Udacity section
    
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).

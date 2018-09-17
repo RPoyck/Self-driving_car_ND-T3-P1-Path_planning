@@ -286,11 +286,10 @@ int main() {
 					float weight_distance = 5.0;	// Weight of the distance of the tracked car //
 					float weight_velocity = 0.5;	// Weight of the velocity of the leading car //
 					
-					// Step through all detected vehicles to see if there is one to close ahead //
-					// Also check if 
+					// Step through all detected vehicles to see if there is one too close ahead //
 					for(unsigned int i = 0; i < sensor_fusion.size(); i++)
 					{
-						// If there is an other car in the lane //
+						
 						float d = sensor_fusion[i][6]; // d value of the other detected car //
 						float d_centreline = 2.0 + 4.0*(float)lane;
 						float d_left_of_centreline = 2.8;	// Take more than 2 to also capture lane-changing vehicles //
@@ -299,6 +298,7 @@ int main() {
 						float safety_distance_forward = 25.0;
 						float safety_distance_rear = -10.0;
 						
+						// If there is an other car in the lane //
 						if ( ( d_centreline - d_left_of_centreline) < d && d < (d_centreline + d_right_of_centreline) )
 						{
 							float vx = sensor_fusion[i][3];
@@ -465,13 +465,14 @@ int main() {
 					if (request_lane_change)
 					{
 						
-						std::cout << " -- NEW SEQUENCE -- " << "\n";
-						std::cout << "cost_shift_left: " << cost_shift_left << "\n";
-						std::cout << "cost_current_lane: "<< cost_current_lane << "\n";
-						std::cout << "cost_shift_right: " << cost_shift_right << "\n";
+// 						// Debugging and tweaking output //
+// 						std::cout << " -- NEW SEQUENCE -- " << "\n";
+// 						std::cout << "cost_shift_left: " << cost_shift_left << "\n";
+// 						std::cout << "cost_current_lane: "<< cost_current_lane << "\n";
+// 						std::cout << "cost_shift_right: " << cost_shift_right << "\n";
 						
 						// If the cost for shifting left is lowest --> shift left //
-						if (cost_shift_left < 100.0 && cost_shift_left < cost_current_lane && cost_shift_left < cost_shift_right)
+						if (cost_shift_left < 100.0 && cost_shift_left < cost_current_lane && cost_shift_left =< cost_shift_right)
 						{
 							lane--;
 						}
