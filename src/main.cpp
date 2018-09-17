@@ -217,16 +217,10 @@ int main() {
 	int lane = 1;
 	
 	// A reference velocity to target //
-	double ref_vel = 49.5; // [mph]
+	double ref_vel = 0.0; // [mph]
 
-	h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
+	h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&lane, &ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
 	{
-		
-		// start in lane 1 //
-		int lane = 1;
-		
-		// A reference velocity to target //
-		double ref_vel = 49.5; // [mph]
 		
 		// "42" at the start of the message means there's a websocket message event.
 		// The 4 signifies a websocket message
@@ -266,15 +260,58 @@ int main() {
 					// Sensor Fusion Data, a list of all other cars on the same side of the road.
 					auto sensor_fusion = j[1]["sensor_fusion"];
 					
-					int prev_size = previous_path_x.size();
+					unsigned int prev_size = previous_path_x.size();
 
 					json msgJson;
-					
-					
 					
 					///////////////////////
 					// Define trajectory //
 					///////////////////////
+					
+					if(prev_size > 0)
+					{
+						car_s = end_path_s;
+					}
+					
+					bool too_close = false;
+					
+					// Find ref_v to use //
+					for(unsigned int i = 0; i < sensor_fusion.size(); i++)
+					{
+						// If there is an other car in the lane //
+						float d = sensor_fusion[i][6]; // d value of the other detected car //
+						if (d < (2 + 4*lane + 2) && d > (2 + 4*lane - 2))   // +2 and -2 is the entire width of the lane //
+						{
+							float vx = sensor_fusion[i][3];
+							float vy = sensor_fusion[i][4];
+							float check_speed = sqrt(vx*vx + vy*vy);   // Speed of the detected car //
+							float check_car_s = sensor_fusion[i][5];  // Logitudinal distance of the detected car //
+							
+							check_car_s += ((float)prev_size * .02 * check_speed); // if using previous point can project s value outwards in time //
+							// Check s values greater than ego and s_gap //
+							float safety_distance = 30.0;
+							// Check if the detected car is in front of the ego vehicle and if it is at a distance below the safety distance //
+							if ( (check_car_s > car_s) && ((check_car_s-car_s) < safety_distance) )
+							{
+								
+								// TODO Do some logic here //
+								// lower reference velocity so the car doesn't collide with the other traffic //
+								// Flag to request a lane change //
+// 								ref_vel = 29.5; // [mph]
+								too_close = true;
+								
+							}
+						}
+					}
+					
+					if (too_close)
+					{
+						ref_vel -= .4;	// Substract a little from the driving velocity leading to 22 [m/s^2/mph] deceleration //
+					}
+					else if(ref_vel < 49.5)	// If previous substractions lead to a below optimal speed //
+					{
+						ref_vel += .4;	// Add a little to the driving velocity leading to 22 [m/s^2/mph] acceleration //
+					}
 					
 					// create a list of widely spaced (x, y) waypoints, evenly spaced at 30m //
 					// Later we will interpolate these waypoints with a spline and fill it in with more points that control sp //
