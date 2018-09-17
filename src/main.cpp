@@ -273,14 +273,33 @@ int main() {
 						car_s = end_path_s;
 					}
 					
-					bool too_close = false;
+					float velocity_ideal = 50.0;
 					
-					// Find ref_v to use //
+					bool too_close = false;
+					bool request_lane_change = false;
+					float cost_current_lane = 0.0;
+					float cost_shift_left = 0.0;
+					float cost_shift_right = 0.0;
+					
+					// Cost function weighting factors //
+					float cost_shift = 0.001;		// Cost for having to shift lanes v.s. staying in the current lane //
+					float weight_distance = 5.0;	// Weight of the distance of the tracked car //
+					float weight_velocity = 0.5;	// Weight of the velocity of the leading car //
+					
+					// Step through all detected vehicles to see if there is one to close ahead //
+					// Also check if 
 					for(unsigned int i = 0; i < sensor_fusion.size(); i++)
 					{
 						// If there is an other car in the lane //
 						float d = sensor_fusion[i][6]; // d value of the other detected car //
-						if (d < (2 + 4*lane + 2) && d > (2 + 4*lane - 2))   // +2 and -2 is the entire width of the lane //
+						float d_centreline = 2.0 + 4.0*(float)lane;
+						float d_left_of_centreline = 2.8;	// Take more than 2 to also capture lane-changing vehicles //
+						float d_right_of_centreline = 2.8;	// Take more than 2 to also capture lane-changing vehicles //
+						
+						float safety_distance_forward = 25.0;
+						float safety_distance_rear = -10.0;
+						
+						if ( ( d_centreline - d_left_of_centreline) < d && d < (d_centreline + d_right_of_centreline) )
 						{
 							float vx = sensor_fusion[i][3];
 							float vy = sensor_fusion[i][4];
@@ -288,29 +307,194 @@ int main() {
 							float check_car_s = sensor_fusion[i][5];  // Logitudinal distance of the detected car //
 							
 							check_car_s += ((float)prev_size * .02 * check_speed); // if using previous point can project s value outwards in time //
-							// Check s values greater than ego and s_gap //
-							float safety_distance = 30.0;
-							// Check if the detected car is in front of the ego vehicle and if it is at a distance below the safety distance //
-							if ( (check_car_s > car_s) && ((check_car_s-car_s) < safety_distance) )
+							
+							// Check if the detected car is in front of the ego vehicle //
+							if (check_car_s > car_s)
 							{
+
+								// Cost of the distance to the leading vehicle //
+								cost_current_lane += (1 / (check_car_s-car_s)) * weight_distance;
+								// Cost of the velocity of the leading vehicle //
+								cost_current_lane += ((velocity_ideal - check_speed) / velocity_ideal) * weight_velocity;
 								
-								// TODO Do some logic here //
-								// lower reference velocity so the car doesn't collide with the other traffic //
-								// Flag to request a lane change //
-// 								ref_vel = 29.5; // [mph]
-								too_close = true;
+								// Check if the detected car is at a distance below the safety distance //
+								if ( (check_car_s-car_s) < safety_distance_forward )
+								{
+									
+									// TODO Do some logic here //
+									// lower reference velocity so the car doesn't collide with the other traffic //
+									// Flag to request a lane change //
+									too_close = true;
+									request_lane_change = true;
+									
+								}
 								
+							}
+							
+						}
+						
+						if (lane == 0)
+						{
+							cost_shift_left = 999999.9;
+							float d_centreline_1 = 6.0;
+							// Add cost shift right //
+							// If there is a car detected in lane 1 //
+							if ( ( d_centreline_1 - d_left_of_centreline) < d && d < (d_centreline_1 + d_right_of_centreline) )
+							{
+								float vx = sensor_fusion[i][3];
+								float vy = sensor_fusion[i][4];
+								float check_speed = sqrt(vx*vx + vy*vy);   // Speed of the detected car //
+								float check_car_s = sensor_fusion[i][5];  // Logitudinal distance of the detected car //
+							
+								check_car_s += ((float)prev_size * .02 * check_speed); // if using previous point can project s value outwards in time //
+								
+								// If the car is within the safety distance, no shift possible //
+								if ( safety_distance_rear < (check_car_s - car_s) && (check_car_s - car_s) < safety_distance_forward )
+								{
+									cost_shift_right = 999999.9;
+								}
+								// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+								else if (safety_distance_forward < (check_car_s - car_s))
+								{
+									// Cost of the distance to the leading vehicle //
+									cost_shift_right += (1 / (check_car_s-car_s)) * weight_distance;
+									// Cost of the velocity of the leading vehicle //
+									cost_shift_right += ((velocity_ideal - check_speed) / velocity_ideal) * weight_velocity;
+									
+								}
+							}
+						}
+						else
+						{
+							if (lane == 2)
+							{
+								cost_shift_right = 999999.9;
+								// Add cost shift left //
+								float d_centreline_1 = 6.0;
+								// If there is a car detected in lane 1 //
+								if ( ( d_centreline_1 - d_left_of_centreline) < d && d < (d_centreline_1 + d_right_of_centreline) )
+								{
+									float vx = sensor_fusion[i][3];
+									float vy = sensor_fusion[i][4];
+									float check_speed = sqrt(vx*vx + vy*vy);   // Speed of the detected car //
+									float check_car_s = sensor_fusion[i][5];  // Logitudinal distance of the detected car //
+								
+									check_car_s += ((float)prev_size * .02 * check_speed); // if using previous point can project s value outwards in time //
+									
+									// If the car is within the safety distance, no shift possible //
+									if ( safety_distance_rear < (check_car_s - car_s) && (check_car_s - car_s) < safety_distance_forward )
+									{
+										cost_shift_left = 999999.9;
+									}
+									// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+									else if (safety_distance_forward < (check_car_s - car_s) )
+									{
+										// Cost of the distance to the leading vehicle //
+										cost_shift_left += (1 / (check_car_s-car_s)) * weight_distance;
+										// Cost of the velocity of the leading vehicle //
+										cost_shift_left += ((velocity_ideal - check_speed) / velocity_ideal) * weight_velocity;
+										
+									}
+								}
+							}
+							else // lane == 1 i.e. central lane //
+							{
+								// Add cost shift left //
+								float d_centreline_0 = 2.0;
+								// If there is a car detected in lane 0 //
+								if ( ( d_centreline_0 - d_left_of_centreline) < d && d < (d_centreline_0 + d_right_of_centreline) )
+								{
+									float vx = sensor_fusion[i][3];
+									float vy = sensor_fusion[i][4];
+									float check_speed = sqrt(vx*vx + vy*vy);   // Speed of the detected car //
+									float check_car_s = sensor_fusion[i][5];  // Logitudinal distance of the detected car //
+								
+									check_car_s += ((float)prev_size * .02 * check_speed); // if using previous point can project s value outwards in time //
+									
+									// If the car is within the safety distance, no shift possible //
+									if ( safety_distance_rear < (check_car_s - car_s) && (check_car_s - car_s) < safety_distance_forward )
+									{
+										cost_shift_left = 999999.9;
+									}
+									// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+									else if (safety_distance_forward < (check_car_s - car_s))
+									{
+										// Cost of the distance to the leading vehicle //
+										cost_shift_left += (1 / (check_car_s-car_s)) * weight_distance;
+										// Cost of the velocity of the leading vehicle //
+										cost_shift_left += ((velocity_ideal - check_speed) / velocity_ideal) * weight_velocity;
+										
+									}
+								}
+								
+								// Add cost shift right //
+								float d_centreline_2 = 10.0;
+								// If there is a car detected in lane 2 //
+								if ( ( d_centreline_2 - d_left_of_centreline) < d && d < (d_centreline_2 + d_right_of_centreline) )
+								{
+									float vx = sensor_fusion[i][3];
+									float vy = sensor_fusion[i][4];
+									float check_speed = sqrt(vx*vx + vy*vy);   // Speed of the detected car //
+									float check_car_s = sensor_fusion[i][5];  // Logitudinal distance of the detected car //
+								
+									check_car_s += ((float)prev_size * .02 * check_speed); // if using previous point can project s value outwards in time //
+									
+									// If the car is within the safety distance, no shift possible //
+									if ( safety_distance_rear < (check_car_s - car_s) && (check_car_s - car_s) < safety_distance_forward )
+									{
+										cost_shift_right = 999999.9;
+									}
+									// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+									else if (safety_distance_forward < (check_car_s - car_s))
+									{
+										// Cost of the distance to the leading vehicle //
+										cost_shift_right += (1 / (check_car_s-car_s)) * weight_distance;
+										// Cost of the velocity of the leading vehicle //
+										cost_shift_right += ((velocity_ideal - check_speed) / velocity_ideal) * weight_velocity;
+										
+									}
+								}
 							}
 						}
 					}
 					
+					cost_shift_left += cost_shift;
+					cost_shift_right += cost_shift;
+					
+					// TODO If a lane change is requested check which lane has the lowest cost and choose that one to drive on //
+					if (request_lane_change)
+					{
+						
+						std::cout << " -- NEW SEQUENCE -- " << "\n";
+						std::cout << "cost_shift_left: " << cost_shift_left << "\n";
+						std::cout << "cost_current_lane: "<< cost_current_lane << "\n";
+						std::cout << "cost_shift_right: " << cost_shift_right << "\n";
+						
+						// If the cost for shifting left is lowest --> shift left //
+						if (cost_shift_left < 100.0 && cost_shift_left < cost_current_lane && cost_shift_left < cost_shift_right)
+						{
+							lane--;
+						}
+						// If the cost for shifting right is lowest --> shift right //
+						if (cost_shift_right < 100.0 && cost_shift_right < cost_current_lane && cost_shift_right < cost_shift_left)
+						{
+							lane++;
+						}
+						// Otherwise, the current lane clearly has the lowest cost --> so stay there //
+					}
+					
+					float deceleration = 5.0;	// [m/s] - Maximum deceleration //
+					float acceleration = 9.5;	// [m/s] - Maximum acceleration //
+					
+					float mps_2_mph = (2.23*2.7);
+					
 					if (too_close)
 					{
-						ref_vel -= .4;	// Substract a little from the driving velocity leading to 22 [m/s^2/mph] deceleration //
+						ref_vel -= deceleration / mps_2_mph;	// Substract a little from the driving velocity leading to 22 [m/s^2/mph] deceleration //
 					}
-					else if(ref_vel < 49.5)	// If previous substractions lead to a below optimal speed //
+					else if(ref_vel < ( velocity_ideal - (1.1 * (acceleration / mps_2_mph)) ) )	// If previous substractions lead to a below optimal speed //
 					{
-						ref_vel += .4;	// Add a little to the driving velocity leading to 22 [m/s^2/mph] acceleration //
+						ref_vel += acceleration / mps_2_mph;	// Add a little to the driving velocity leading to 22 [m/s^2/mph] acceleration //
 					}
 					
 					// create a list of widely spaced (x, y) waypoints, evenly spaced at 30m //
