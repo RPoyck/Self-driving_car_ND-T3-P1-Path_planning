@@ -7,37 +7,56 @@ Execution by: Rob Poyck
 ## Current model setup
 The code is commented throughout and therefore forms a complete documentation of the flow on its own, in order to create an overview all the main steps are summarised here:
  - The algorithm bases on the following input
-     - Sensor fusion data of all the cars on the same side of the road as the ego vehicle
+     - Sensor fusion data of all the detected cars on the same side of the road as the ego vehicle
      - The position of the ego vehicle on the road
      - The waypoints of the last iteration which have not been reached yet.
- - To define the trajectory for the coming second or more from the current time-step
+ - To define the trajectory for the coming time-step from the current time-step
      - All the detected vehicles on the ego vehicle's side of the road are checked:
-         - If there is a vehicle directly in front of the ego vehicle 
+         - If there is a vehicle in front of the ego vehicle 
              - Calculate the cost impact on staying on this lane based on 
                  - The distance to the vehicle 
                  - The vehicle's speed
              - If this vehicle is closer by than the safety distance of 25 [m]
                  - A flag is set to indicate that the ego velocity has to be reduced
-                 - A flag is set to indicate that the 
-         - For both the lanes to the left and to the right of the current lane if there is a lane on that side
-             - If there is a vehicle within !!
+                 - A flag is set to indicate that the lane should be shifted when an other lane is more optimal, since the vehicle has to reduce the speed to below the optimal.
+         - For both the lane to the left and to the right of the current lane if there is a lane on that side
+             - If there is a vehicle within the forward safety distance of 25 [m] and the rear safety distance of (-)10 [m]
+                 - It is not safe to switch to this lane, therefore the cost is set to a number higher than the scale.
              - Otherwise if there is a vehicle further forward than the safety distance of 25 [m] calculate the cost impact of switching to this lane based on
                  - The distance to the vehicle 
                  - The vehicle's speed
                  - The fact that the vehicle has to switch lanes, which is less optimal than continuing on a straight path
-                 
-
+     - If the vehicle has to drive at a below-optimal velocity execute the action with the lowest cost of the three:
+         - Switch to the lane to the left
+         - Switch to the lane on the right
+         - Stay on the current lane
+     - Do either of two things
+         - If the flag was set that there is a vehicle too close to the front of the ego vehicle, reduce the current speed
+         - Otherwise, if the speed is below-optimal, increase the speed towards this optimal
+     - Define the guide-points for the path that needs to be driven
+         - Define the starting waypoints for a smooth transition between timesteps
+		     - Either take two points that have not been reached by the controller yet from the last trajectory, if there are still enough of these points, or
+		     - Take the current vehicle position with an extrapolation point using the cars heading, in order for the point to be tangent to the vehicle.
+         - Define 3 points at 30 [m] intervals in front of the vehicle inside the desired lane using Frenet coordinates which are converted to xy coordinates
+         - Rotate the points to align the reference x-axis with the x-axis of the vehicle, in order to avoid vertical fitted curves where there are multiple y-values/solutions for the same x-value 
+     - Create a spline which fits to the guide-points defined above
+     - Use the spline to define point to fill the list of waypoints to 50, where the distance between waypoints is based on the desired velocity
+     - Convert the points back from vehicle coordinate system to map coordinate system
+     - The trajectory in the form of these waypoints one of which is approached every 20 [ms] is given to the controller in the simulator
      
 ## Possible improvement
-Some improvements to make the algorithm better and/or more efficient:
+Some of many possible improvements to make the algorithm better and/or more efficient:
  - Code refactoring 
      - There is some repetition in the code which could be packed in functions/methods to make the code somewhat more efficient and a lot more clean and transparent
-     - All the tuning parameters can be defined in a single place and read from a parameter file in stead of half hard-coded. This will make tuning easier and will mean that it is not necessary to build the code after every little change in parameters.
+     - All the tuning parameters can be defined in a single place and read from a parameter file in stead of being hard-coded. This will make tuning easier and will mean that it is not necessary to build the code after every little change in parameters.
  - Foresight
      - Some efficiency can be gained by using all the available information, to for example shift lanes even before getting to close to other vehicles
      - Currently only the lanes directly next to the current lane are taken in the cost calculation, it is better to take all 3 lanes constantly, for it might be more efficient to change two lanes directly after one another.
  - Collision detection
-     - Sometimes the distance without accident is broken by an other car read- or side-ending the ego vehicle in a bad lane-change manoeuvre. This could be avoided sometimes by detecting the intention, i.e. sidewards velocity, and speeding up/slowing down/changing lanes when possible.
+     - Sometimes the distance without accident is broken by an other car rear- or side-ending the ego vehicle in a bad lane-change manoeuvre. This could be avoided sometimes by detecting the intention, i.e. sidewards velocity, and speeding up/slowing down/changing lanes when possible.
+ - Different modes to add
+     - Have a follow mode to follow the preceding car and match its speed, if there is no other option to fall back or overtake. In contrast to the current accelerate-decelerate waves.
+     - Expand the overtaking mode to include the options to decrease speed and fall back a bit to change to a faster lane, i.e. actively finding overtaking opportunities.
 
 # Default Udacity section
    

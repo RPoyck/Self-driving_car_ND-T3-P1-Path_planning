@@ -320,13 +320,10 @@ int main() {
 								// Check if the detected car is at a distance below the safety distance //
 								if ( (check_car_s-car_s) < safety_distance_forward )
 								{
-									
-									// TODO Do some logic here //
-									// lower reference velocity so the car doesn't collide with the other traffic //
-									// Flag to request a lane change //
+									// Flag to request lower reference velocity so the car doesn't collide with the other traffic //
 									too_close = true;
-									request_lane_change = true;
-									
+									// Flag to request a lane change //
+									request_lane_change = true;	
 								}
 								
 							}
@@ -335,7 +332,9 @@ int main() {
 						
 						if (lane == 0)
 						{
+							// If the lane is 0 the vehicle cannot shift to a lane left of it //
 							cost_shift_left = 999999.9;
+							// Check the lane to the right, which is lane 1 //
 							float d_centreline_1 = 6.0;
 							// Add cost shift right //
 							// If there is a car detected in lane 1 //
@@ -353,7 +352,7 @@ int main() {
 								{
 									cost_shift_right = 999999.9;
 								}
-								// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+								// If the car is ahead of the ego car add cost of this vehicle to the cost of switching to the lane (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
 								else if (safety_distance_forward < (check_car_s - car_s))
 								{
 									// Cost of the distance to the leading vehicle //
@@ -368,6 +367,7 @@ int main() {
 						{
 							if (lane == 2)
 							{
+								// If the lane is 2 the vehicle cannot shift to a lane right of it //
 								cost_shift_right = 999999.9;
 								// Add cost shift left //
 								float d_centreline_1 = 6.0;
@@ -386,7 +386,7 @@ int main() {
 									{
 										cost_shift_left = 999999.9;
 									}
-									// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+									// If the car is ahead of the ego car add cost of this vehicle to the cost of switching to the lane (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
 									else if (safety_distance_forward < (check_car_s - car_s) )
 									{
 										// Cost of the distance to the leading vehicle //
@@ -416,7 +416,7 @@ int main() {
 									{
 										cost_shift_left = 999999.9;
 									}
-									// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+									// If the car is ahead of the ego car add cost of this vehicle to the cost of switching to the lane (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
 									else if (safety_distance_forward < (check_car_s - car_s))
 									{
 										// Cost of the distance to the leading vehicle //
@@ -444,7 +444,7 @@ int main() {
 									{
 										cost_shift_right = 999999.9;
 									}
-									// If the car is ahead of the ego car (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
+									// If the car is ahead of the ego car add cost of this vehicle to the cost of switching to the lane (if the other car further is further behind us than the safety distance it adds no cost/we don't care) //
 									else if (safety_distance_forward < (check_car_s - car_s))
 									{
 										// Cost of the distance to the leading vehicle //
@@ -458,6 +458,7 @@ int main() {
 						}
 					}
 					
+					// Add the cost for shifting lane v.s. staying in the lane because it is in itself a slightly less efficient action //
 					cost_shift_left += cost_shift;
 					cost_shift_right += cost_shift;
 					
@@ -541,7 +542,7 @@ int main() {
 						ptsy.push_back(ref_y);
 					}
 					
-					// In Frenet coordinates add points evenly spaced at 30m ahead of the starting reference //
+					// In Frenet coordinates add points evenly spaced at 30m ahead of the starting reference, using the desired lane //
 					std::vector<double > next_wp0 = getXY(car_s + 30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 					std::vector<double > next_wp1 = getXY(car_s + 60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 					std::vector<double > next_wp2 = getXY(car_s + 90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -554,6 +555,8 @@ int main() {
 					ptsy.push_back(next_wp1[1]);
 					ptsy.push_back(next_wp2[1]);
 					
+					// Rotate the points to align the reference x-axis with the x-axis of the vehicle //
+					// In order to avoid vertical fitted curves where there are multiple y-values/solutions for the same x-value //
 					for (int i = 0; i < ptsx.size(); i++)
 					{
 						// Shift car reference angle to 0 [deg] //
@@ -610,24 +613,6 @@ int main() {
 						next_x_vals.push_back(x_point);
 						next_y_vals.push_back(y_point);
 					}
-					
-					
-					
-					
-// 					vector<double> next_x_vals;
-// 					vector<double> next_y_vals;
-// 					
-// 					double dist_inc = 0.5;
-// 					for(int i = 0; i < 50; i++)
-// 					{
-// 						double next_s = car_s + (i+1)*dist_inc;
-// 						double next_d = car_d;
-// 						std::vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-// 						next_x_vals.push_back(xy[0]);
-// 						next_y_vals.push_back(xy[1]);
-// // 						next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-// // 						next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-// 					}
 
 					//////////////////////////////////
 					// Pass trajectory to simulator //
