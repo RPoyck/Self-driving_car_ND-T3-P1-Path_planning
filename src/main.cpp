@@ -473,7 +473,7 @@ int main() {
 // 						std::cout << "cost_shift_right: " << cost_shift_right << "\n";
 						
 						// If the cost for shifting left is lowest --> shift left //
-						if (cost_shift_left < 100.0 && cost_shift_left < cost_current_lane && cost_shift_left =< cost_shift_right)
+						if (cost_shift_left < 100.0 && cost_shift_left < cost_current_lane && cost_shift_left <= cost_shift_right)
 						{
 							lane--;
 						}
@@ -488,7 +488,7 @@ int main() {
 					float deceleration = 5.0;	// [m/s] - Maximum deceleration //
 					float acceleration = 9.5;	// [m/s] - Maximum acceleration //
 					
-					float mps_2_mph = (2.23*2.7);
+					float mps_2_mph = (2.23*3.0);
 					
 					if (too_close)
 					{
